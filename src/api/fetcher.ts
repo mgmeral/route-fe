@@ -76,7 +76,8 @@ export const apiFetch = async <T>(input: string, init?: RequestInit): Promise<T>
       ...(init?.headers ?? {}), 
       'Content-Type': 'application/json',
       ...(authHeader ? { Authorization: authHeader } : {})
-    }
+    },
+    signal: init?.signal
   });
 
   if (response.status === 401) {

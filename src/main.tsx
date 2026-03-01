@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router';
 import { AuthProvider } from './auth/AuthContext';
+import { ToastProvider } from './layout/Toast';
 import './styles.css';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: unknown }> {
@@ -33,11 +34,11 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <ErrorBoundary>
+  <ErrorBoundary>
+    <ToastProvider>
       <AuthProvider>
         <RouterProvider router={router} />
       </AuthProvider>
-    </ErrorBoundary>
-  </React.StrictMode>
+    </ToastProvider>
+  </ErrorBoundary>
 );

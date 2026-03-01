@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getLocations } from '../api/locations';
 import type { Location } from '../types';
 import { ApiError } from '../api/fetcher';
+import { useToast } from '../layout/Toast';
 import {
   createTransportation,
   deleteTransportation,
@@ -40,7 +41,9 @@ const getError = (error: unknown) => {
       return error.details;
     }
     if (error.details && typeof error.details === 'object') {
-      return JSON.stringify(error.details);
+      const det = error.details as Record<string, unknown>;
+      if (typeof det.message === 'string') return det.message;
+      return error.message;
     }
     return error.message;
   }
@@ -76,9 +79,9 @@ const formatLocationValue = (value: unknown) => {
 };
 
 export const TransportationsPage = () => {
+  const { showToast } = useToast();
   const [items, setItems] = useState<Transportation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
@@ -92,10 +95,9 @@ export const TransportationsPage = () => {
   const load = async () => {
     try {
       setLoading(true);
-      setError('');
       setItems(await getTransportations());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Load failed.');
+      showToast(err instanceof Error ? err.message : 'Load failed.', 'error');
     } finally {
       setLoading(false);
     }
@@ -156,7 +158,7 @@ export const TransportationsPage = () => {
       setModalOpen(false);
       await load();
     } catch (err) {
-      setFormError(getError(err));
+      showToast(getError(err), 'error');
     }
   };
 
@@ -168,7 +170,7 @@ export const TransportationsPage = () => {
       await deleteTransportation(id);
       await load();
     } catch (err) {
-      setError(getError(err));
+      showToast(getError(err), 'error');
     }
   };
 
@@ -181,7 +183,6 @@ export const TransportationsPage = () => {
         </button>
       </div>
       {loading ? <p>Loading...</p> : null}
-      {error ? <p className="error-text">{error}</p> : null}
 
       <table className="table">
         <thead>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ApiError } from '../api/fetcher';
 import { getLocations } from '../api/locations';
 import { normalizeSegment, searchRoutes } from '../api/routes';
+import { useToast } from '../layout/Toast';
 import type { Location, RouteResponse, RouteSegmentResponse } from '../types';
 
 interface ValidationErrors {
@@ -139,6 +140,7 @@ const getTransportIcon = (type: string) => {
 };
 
 export const RoutesPage = () => {
+  const { showToast } = useToast();
   const [locations, setLocations] = useState<Location[]>([]);
   const [originId, setOriginId] = useState('');
   const [destinationId, setDestinationId] = useState('');
@@ -149,19 +151,25 @@ export const RoutesPage = () => {
   const [routes, setRoutes] = useState<RouteResponse[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
+    const controller = new AbortController();
     (async () => {
       try {
         setLoadingLocations(true);
-        setLocations(await getLocations());
+        const data = await getLocations(controller.signal);
+        setLocations(data);
       } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : 'Failed to fetch locations.');
+        if (!controller.signal.aborted) {
+          showToast(error instanceof Error ? error.message : 'Failed to fetch locations.', 'error');
+        }
       } finally {
-        setLoadingLocations(false);
+        if (!controller.signal.aborted) {
+          setLoadingLocations(false);
+        }
       }
     })();
+    return () => { controller.abort(); };
   }, []);
 
   const validate = () => {
@@ -195,16 +203,15 @@ export const RoutesPage = () => {
 
     try {
       setLoadingRoutes(true);
-      setErrorMessage('');
       const data = await searchRoutes({ originId, destinationId, tripDate });
       setRoutes(data);
       setSelectedIndex(data.length > 0 ? 0 : null);
       setPanelOpen(data.length > 0);
     } catch (error) {
       if (error instanceof ApiError) {
-        setErrorMessage(error.message);
+        showToast(error.message, 'error');
       } else {
-        setErrorMessage('Unable to search routes.');
+        showToast('Unable to search routes.', 'error');
       }
     } finally {
       setLoadingRoutes(false);
@@ -275,7 +282,6 @@ export const RoutesPage = () => {
           {errors.tripDate ? <p className="error-text">{errors.tripDate}</p> : null}
         </form>
         {loadingLocations ? <p>Loading locations...</p> : null}
-        {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
       </div>
 
       <div className="routes-layout">

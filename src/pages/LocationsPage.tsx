@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ApiError } from '../api/fetcher';
 import { createLocation, deleteLocation, getLocations, updateLocation } from '../api/locations';
 import { Modal } from '../layout/Modal';
+import { useToast } from '../layout/Toast';
 import type { Location, LocationCreateRequest } from '../types';
 
 // instead of using the helper functions from the package (which rely on
@@ -32,7 +33,9 @@ const getErrorText = (error: unknown) => {
       return error.details;
     }
     if (error.details && typeof error.details === 'object') {
-      return JSON.stringify(error.details);
+      const det = error.details as Record<string, unknown>;
+      if (typeof det.message === 'string') return det.message;
+      return error.message;
     }
     return error.message;
   }
@@ -40,9 +43,9 @@ const getErrorText = (error: unknown) => {
 };
 
 export const LocationsPage = () => {
+  const { showToast } = useToast();
   const [items, setItems] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Location | null>(null);
   const [form, setForm] = useState<LocationCreateRequest>(initialForm);
@@ -55,10 +58,9 @@ export const LocationsPage = () => {
   const load = async () => {
     try {
       setLoading(true);
-      setError('');
       setItems(await getLocations());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load locations.');
+      showToast(err instanceof Error ? err.message : 'Failed to load locations.', 'error');
     } finally {
       setLoading(false);
     }
@@ -126,7 +128,7 @@ export const LocationsPage = () => {
       setModalOpen(false);
       await load();
     } catch (err) {
-      setFormError(getErrorText(err));
+      showToast(getErrorText(err), 'error');
     } finally {
       setSaving(false);
     }
@@ -140,7 +142,7 @@ export const LocationsPage = () => {
       await deleteLocation(id);
       await load();
     } catch (err) {
-      setError(getErrorText(err));
+      showToast(getErrorText(err), 'error');
     }
   };
 
@@ -154,7 +156,6 @@ export const LocationsPage = () => {
       </div>
 
       {loading ? <p>Loading...</p> : null}
-      {error ? <p className="error-text">{error}</p> : null}
 
       <table className="table">
         <thead>

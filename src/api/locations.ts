@@ -1,9 +1,9 @@
 import type { Location, LocationCreateRequest } from '../types';
 import { apiFetch} from './fetcher';
 
-export const getLocations = async (): Promise<Location[]> => {
+export const getLocations = async (signal?: AbortSignal): Promise<Location[]> => {
   try {
-    return await apiFetch<Location[]>('/api/locations');
+    return await apiFetch<Location[]>('/api/locations', { signal });
   } catch (error) {
     throw error;
   }

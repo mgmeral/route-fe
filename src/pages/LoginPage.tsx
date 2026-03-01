@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/fetcher';
 import { useAuth } from '../auth/AuthContext';
+import { useToast } from '../layout/Toast';
 
 export const LoginPage = () => {
   const [username, setUsername] = useState('');
@@ -10,6 +11,7 @@ export const LoginPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { currentUser, login } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   if (currentUser) {
     return <Navigate to="/routes" replace />;
@@ -35,9 +37,9 @@ export const LoginPage = () => {
       navigate('/routes', { replace: true });
     } catch (loginError) {
       if (loginError instanceof ApiError) {
-        setError(loginError.message);
+        showToast(loginError.message, 'error');
       } else {
-        setError('Unable to login.');
+        showToast('Unable to login.', 'error');
       }
     } finally {
       setIsSubmitting(false);
