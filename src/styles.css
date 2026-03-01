@@ -448,6 +448,107 @@ fieldset legend {
 .panel-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Route map modal */
+.route-map-modal {
+  width: min(640px, 92vw);
+}
+
+.map-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+}
+
+.map-error .error-text {
+  text-align: center;
+  max-width: 360px;
+}
+
+.map-fallback-links {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.map-fallback-links a.btn {
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+/* Numbered stop marker icons */
+.stop-number-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+/* Warning banner for partial geocoding */
+.map-warning {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  color: #92400e;
+}
+
+/* Map legend */
+.map-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 4px 0;
+  font-size: 0.82rem;
+  color: #374151;
+}
+
+.map-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.map-legend-color {
+  display: inline-block;
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+/* Transport icon at leg midpoint */
+.transport-mid-icon {
+  background: none !important;
+  border: none !important;
+}
+
+.transport-mid-icon span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: 1rem;
+  background: #fff;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.25);
 }
 
 .login-page {

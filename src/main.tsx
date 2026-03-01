@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router';
 import { AuthProvider } from './auth/AuthContext';
 import { ToastProvider } from './layout/Toast';
+import 'leaflet/dist/leaflet.css';
 import './styles.css';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: unknown }> {

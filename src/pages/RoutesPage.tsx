@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError } from '../api/fetcher';
 import { getLocations } from '../api/locations';
 import { normalizeSegment, searchRoutes } from '../api/routes';
 import { useToast } from '../layout/Toast';
 import type { Location, RouteResponse, RouteSegmentResponse } from '../types';
+import { RouteMapModal, type RouteStop } from './RouteMapModal';
 
 interface ValidationErrors {
   originId?: string;
@@ -151,6 +152,7 @@ export const RoutesPage = () => {
   const [routes, setRoutes] = useState<RouteResponse[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
+  const [mapModalOpen, setMapModalOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -219,6 +221,72 @@ export const RoutesPage = () => {
   };
 
   const selectedRoute = selectedIndex !== null ? routes[selectedIndex] : null;
+
+  /** Look up a Location by code from the locations list. */
+  const findLocation = useCallback(
+    (code: string): Location | undefined =>
+      locations.find((l) => l.code.toUpperCase() === code.toUpperCase()),
+    [locations],
+  );
+
+  /**
+   * Build the ordered list of RouteStop objects for a route.
+   * Mirrors exactly what the timeline renders:
+   *   route.from → seg[0].transport → seg[0].dest → seg[1].transport → seg[1].dest → …
+   */
+  const buildRouteStops = useCallback(
+    (route: RouteResponse): RouteStop[] => {
+      const stops: RouteStop[] = [];
+
+      const pushStop = (label: string, code: string | undefined, transportAfter?: string) => {
+        const loc = code ? findLocation(code) : undefined;
+        const stop: RouteStop = {
+          label: loc?.name ?? label,
+          code: loc?.code ?? code,
+          city: loc?.city,
+          country: loc?.country,
+          transportAfter,
+        };
+        // Deduplicate consecutive identical stops (by label, case-insensitive)
+        const prev = stops.length > 0 ? stops[stops.length - 1] : null;
+        if (prev && prev.label.toLowerCase() === stop.label.toLowerCase()) {
+          if (transportAfter && !prev.transportAfter) {
+            prev.transportAfter = transportAfter;
+          }
+          return;
+        }
+        stops.push(stop);
+      };
+
+      // First stop: route origin
+      const originLoc = findLocation(route.from);
+      const firstTransport = route.segments.length > 0
+        ? normalizeSegment(route.segments[0]).transportLabel
+        : undefined;
+      pushStop(
+        originLoc?.name ?? route.from,
+        originLoc?.code ?? route.from,
+        firstTransport,
+      );
+
+      // Each segment contributes its destination as the next stop.
+      // The transport between stop[i] and stop[i+1] is segment[i].transportLabel.
+      for (let i = 0; i < route.segments.length; i++) {
+        const seg = route.segments[i];
+        const segDest = getSegmentDestinationData(seg);
+        const nextTransport = i < route.segments.length - 1
+          ? normalizeSegment(route.segments[i + 1]).transportLabel
+          : undefined;
+
+        const destLabel = segDest.name || segDest.code || normalizeSegment(seg).locationLabel;
+        pushStop(destLabel, segDest.code || undefined, nextTransport);
+      }
+
+      return stops;
+    },
+    [findLocation],
+  );
+
   const locationNameByCode = useMemo(
     () =>
       new Map(
@@ -362,12 +430,29 @@ export const RoutesPage = () => {
             </div>
           )}
           <div className="panel-actions">
+            {selectedRoute && (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setMapModalOpen(true)}
+              >
+                Show on map
+              </button>
+            )}
             <button type="button" className="btn btn-ghost" onClick={() => setPanelOpen(false)}>
               Close
             </button>
           </div>
         </section>
       </div>
+
+      {selectedRoute && (
+        <RouteMapModal
+          open={mapModalOpen}
+          onClose={() => setMapModalOpen(false)}
+          stops={buildRouteStops(selectedRoute)}
+        />
+      )}
     </div>
   );
 };
