@@ -67,22 +67,17 @@ const buildAuthHeader = () => {
 };
 
 export const apiFetch = async <T>(input: string, init?: RequestInit): Promise<T> => {
-  let response: Response;
   const authHeader = buildAuthHeader();
 
-  try {
-    response = await fetch(input, {
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(authHeader ? { Authorization: authHeader } : {}),
-        ...(init?.headers ?? {})
-      },
-      ...init
-    });
-  } catch (error) {
-    throw error;
-  }
+  const response = await fetch(input, {
+    ...init,
+    credentials: 'include', 
+    headers: {
+      ...(init?.headers ?? {}), 
+      'Content-Type': 'application/json',
+      ...(authHeader ? { Authorization: authHeader } : {})
+    }
+  });
 
   if (response.status === 401) {
     clearAuthCredential();

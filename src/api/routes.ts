@@ -1,6 +1,5 @@
 import type { NormalizedSegment, RouteResponse, RouteSegmentResponse } from '../types';
-import { apiFetch, isNetworkError } from './fetcher';
-import { mockRoutes } from './mockStore';
+import { apiFetch } from './fetcher';
 
 const transportKeys = ['transportationName', 'transportation', 'mode', 'type', 'name'] as const;
 const locationKeys = ['to', 'destination', 'end', 'location', 'locationName', 'toName'] as const;
@@ -25,14 +24,16 @@ export const searchRoutes = async (params: {
   destinationId: string;
   tripDate: string;
 }): Promise<RouteResponse[]> => {
-  const query = new URLSearchParams(params).toString();
+  const queryParams = new URLSearchParams({
+    from: params.originId,
+    to: params.destinationId,
+    date: params.tripDate
+  }).toString();
 
   try {
-    return await apiFetch<RouteResponse[]>(`/api/routes?${query}`);
+    return await apiFetch<RouteResponse[]>(`/api/routes?${queryParams}`);
   } catch (error) {
-    if (isNetworkError(error)) {
-      return mockRoutes;
-    }
+    // propagate any error; do not default to mock data
     throw error;
   }
 };

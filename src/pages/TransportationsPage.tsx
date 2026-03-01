@@ -1,13 +1,38 @@
 import { useEffect, useState } from 'react';
+import { getLocations } from '../api/locations';
+import type { Location } from '../types';
 import { ApiError } from '../api/fetcher';
 import {
   createTransportation,
   deleteTransportation,
   getTransportations,
-  updateTransportation
+  updateTransportation,
+  TransportationPayload
 } from '../api/transportations';
 import { Modal } from '../layout/Modal';
 import type { Transportation } from '../types';
+
+// predefined transportation types supported by the backend
+const TRANSPORT_TYPES = ['FLIGHT', 'BUS', 'SUBWAY', 'UBER'] as const;
+
+// weekday bit values for encoding/decoding the `days` mask
+const WEEKDAYS = [
+  { name: 'Monday', value: 1 },
+  { name: 'Tuesday', value: 2 },
+  { name: 'Wednesday', value: 4 },
+  { name: 'Thursday', value: 8 },
+  { name: 'Friday', value: 16 },
+  { name: 'Saturday', value: 32 },
+  { name: 'Sunday', value: 64 }
+] as const;
+
+// convert a numeric mask to a human-readable list of weekday names
+const formatDays = (mask: number) => {
+  if (!mask) return '';
+  return WEEKDAYS.filter((d) => mask & d.value)
+    .map((d) => d.name)
+    .join(', ');
+};
 
 const getError = (error: unknown) => {
   if (error instanceof ApiError) {
@@ -27,9 +52,14 @@ export const TransportationsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-  const [name, setName] = useState('');
+  const [origin, setOrigin] = useState('');
+  const [destination, setDestination] = useState('');
+  const [type, setType] = useState('');
+  const [daysMask, setDaysMask] = useState(0);
   const [editing, setEditing] = useState<Transportation | null>(null);
   const [formError, setFormError] = useState('');
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [locationsLoading, setLocationsLoading] = useState(false);
 
   const load = async () => {
     try {
@@ -45,34 +75,55 @@ export const TransportationsPage = () => {
 
   useEffect(() => {
     void load();
+    // Lokasyonları getir
+    setLocationsLoading(true);
+    getLocations()
+      .then((locs) => setLocations(locs))
+      .catch(() => setLocations([]))
+      .finally(() => setLocationsLoading(false));
   }, []);
 
   const openCreate = () => {
     setEditing(null);
-    setName('');
+    setOrigin('');
+    setDestination('');
+    setType('');
+    setDaysMask(0);
     setFormError('');
     setModalOpen(true);
   };
 
   const openEdit = (item: Transportation) => {
     setEditing(item);
-    setName(String(item.name ?? ''));
+    const originId = typeof item.origin === 'object' && item.origin?.id ? String(item.origin.id) : '';
+    const destinationId = typeof item.destination === 'object' && item.destination?.id ? String(item.destination.id) : '';
+    setOrigin(originId);
+    setDestination(destinationId);
+    setType(String(item.type ?? ''));
+    setDaysMask(Number((item as any).operatingDaysMask ?? 0));
     setFormError('');
     setModalOpen(true);
   };
 
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!name.trim()) {
-      setFormError('Name is required.');
+    if (!origin.trim() || !destination.trim() || !type.trim() || daysMask === 0) {
+      setFormError('All fields are required.');
       return;
     }
 
+    const payload: TransportationPayload = {
+      originLocationId: origin.trim(),
+      destinationLocationId: destination.trim(),
+      type: type.trim(),
+      operatingDaysMask: daysMask
+    };
+
     try {
       if (editing) {
-        await updateTransportation(editing.id, { name: name.trim() });
+        await updateTransportation(editing.id, payload);
       } else {
-        await createTransportation({ name: name.trim() });
+        await createTransportation(payload);
       }
       setModalOpen(false);
       await load();
@@ -107,14 +158,20 @@ export const TransportationsPage = () => {
       <table className="table">
         <thead>
           <tr>
-            <th>Name</th>
+            <th>Origin</th>
+            <th>Destination</th>
+            <th>Type</th>
+            <th>Days</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
             <tr key={item.id}>
-              <td>{String(item.name ?? '')}</td>
+              <td>{typeof item.origin === 'object' ? item.origin?.code : String(item.origin ?? '')}</td>
+              <td>{typeof item.destination === 'object' ? item.destination?.code : String(item.destination ?? '')}</td>
+              <td>{String(item.type ?? '')}</td>
+              <td>{formatDays(Number((item as any).operatingDaysMask ?? 0))}</td>
               <td>
                 <div className="actions">
                   <button type="button" className="btn btn-ghost" onClick={() => openEdit(item)}>
@@ -137,9 +194,57 @@ export const TransportationsPage = () => {
       >
         <form className="form-grid" onSubmit={save}>
           <label>
-            Name
-            <input value={name} onChange={(event) => setName(event.target.value)} />
+            Origin
+            <select value={origin} onChange={e => setOrigin(e.target.value)} required disabled={locationsLoading}>
+              <option value="">Select origin</option>
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name} ({loc.city}, {loc.country})
+                </option>
+              ))}
+            </select>
           </label>
+          <label>
+            Destination
+            <select value={destination} onChange={e => setDestination(e.target.value)} required disabled={locationsLoading}>
+              <option value="">Select destination</option>
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name} ({loc.city}, {loc.country})
+                </option>
+              ))}
+            </select>
+          </label>
+          <fieldset>
+            <legend>Type</legend>
+            <div className="multi-control">
+              {TRANSPORT_TYPES.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className={type === t ? 'selected' : ''}
+                  onClick={() => setType(t)}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Days</legend>
+            <div className="multi-control">
+              {WEEKDAYS.map((d) => (
+                <button
+                  type="button"
+                  key={d.value}
+                  className={daysMask & d.value ? 'selected' : ''}
+                  onClick={() => setDaysMask((prev) => prev ^ d.value)}
+                >
+                  {d.name}
+                </button>
+              ))}
+            </div>
+          </fieldset>
           {formError ? <p className="error-text">{formError}</p> : null}
           <button type="submit" className="btn">
             Save

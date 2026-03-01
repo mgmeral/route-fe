@@ -4,6 +4,21 @@ import { createLocation, deleteLocation, getLocations, updateLocation } from '..
 import { Modal } from '../layout/Modal';
 import type { Location, LocationCreateRequest } from '../types';
 
+// instead of using the helper functions from the package (which rely on
+// `require` and caused runtime failures in dev mode) we import the raw JSON
+// data directly. Vite handles JSON imports natively, so this works in both
+// development and production.
+import dataset from 'countries-cities/data.json';
+
+// compute the list of countries once
+const countryList: string[] = Object.keys((dataset as any).countries);
+
+// helper to fetch cities for a country; returns an empty array if none exist
+const lookupCities = (country: string): string[] => {
+  return (dataset as any).countries[country] || [];
+};
+
+
 const initialForm: LocationCreateRequest = {
   code: '',
   name: '',
@@ -33,6 +48,9 @@ export const LocationsPage = () => {
   const [form, setForm] = useState<LocationCreateRequest>(initialForm);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+  const [cityFilter, setCityFilter] = useState('');
+  const [showCityList, setShowCityList] = useState(false);
 
   const load = async () => {
     try {
@@ -62,6 +80,9 @@ export const LocationsPage = () => {
   const openEdit = (location: Location) => {
     setEditing(location);
     setForm({ code: location.code, name: location.name, country: location.country, city: location.city });
+    setCityOptions(lookupCities(location.country));
+    setCityFilter('');
+    setShowCityList(false);
     setFormError('');
     setModalOpen(true);
   };
@@ -73,11 +94,15 @@ export const LocationsPage = () => {
     if (!form.name || form.name.length > 128) {
       return 'Name is required and max 128 chars.';
     }
-    if (!form.country || form.country.length > 64) {
-      return 'Country is required and max 64 chars.';
+    if (!form.country || !countryList.includes(form.country)) {
+      return 'Please select a valid country.';
     }
     if (!form.city || form.city.length > 64) {
       return 'City is required and max 64 chars.';
+    }
+    // if we have cityOptions for this country, ensure the selected city is one
+    if (cityOptions.length && !cityOptions.includes(form.city)) {
+      return 'Please select a city from the list.';
     }
     return '';
   };
@@ -175,14 +200,70 @@ export const LocationsPage = () => {
           </label>
           <label>
             Country
-            <input
+            <select
               value={form.country}
-              onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))}
-            />
+              onChange={(event) => {
+                const country = event.target.value;
+                setForm((prev) => ({ ...prev, country, city: '' }));
+                setCityOptions(country ? lookupCities(country) : []);
+              }}
+            >
+              <option value="">Select country</option>
+              {countryList.map((c: string) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </label>
-          <label>
+          <label style={{ position: 'relative' }}>
             City
-            <input value={form.city} onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))} />
+            <input
+              value={form.city}
+              onChange={(event) => {
+                const val = event.target.value;
+                setForm((prev) => ({ ...prev, city: val }));
+                setCityFilter(val);
+                setShowCityList(true);
+              }}
+              disabled={cityOptions.length === 0}
+              onFocus={() => setShowCityList(true)}
+            />
+            {showCityList && cityFilter && cityOptions.length ? (
+              <ul
+                className="city-suggestions"
+                style={{
+                  position: 'absolute',
+                  zIndex: 100,
+                  background: 'white',
+                  border: '1px solid #d1d5db',
+                  width: '100%',
+                  maxHeight: 200,
+                  overflowY: 'auto',
+                  margin: 0,
+                  padding: 0,
+                  listStyle: 'none'
+                }}
+              >
+                {cityOptions
+                  .filter((c) => c.toLowerCase().includes(cityFilter.toLowerCase()))
+                  .slice(0, 200)
+                  .map((city) => (
+                    <li
+                      key={city}
+                      style={{ padding: '4px 8px', cursor: 'pointer' }}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setForm((prev) => ({ ...prev, city }));
+                        setCityFilter(city);
+                        setShowCityList(false);
+                      }}
+                    >
+                      {city}
+                    </li>
+                  ))}
+              </ul>
+            ) : null}
           </label>
           {formError ? <p className="error-text">{formError}</p> : null}
           <button disabled={saving} type="submit" className="btn">

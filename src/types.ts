@@ -15,7 +15,10 @@ export interface Location {
 
 export interface Transportation {
   id: string;
-  name: string;
+  origin?: Location;
+  destination?: Location;
+  type?: string;
+  operatingDaysMask?: number;
   [key: string]: unknown;
 }
 

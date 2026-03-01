@@ -1,3 +1,26 @@
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+}
+
+.login-card {
+  width: min(360px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.08);
+  padding: 32px 24px;
+}
+
+.login-card label {
+  display: flex;
+  flex-direction: column;
+  font-size: 1rem;
+  gap: 6px;
+}
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   color: #111827;
@@ -166,7 +189,19 @@ button {
 
 .modal-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: space-between;  .checkbox-grid {
+    display: grid;
+    /* seven equal columns that shrink to fit the container */
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    align-items: center;
+  }
+  .checkbox-grid label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
   align-items: center;
 }
 
@@ -175,6 +210,55 @@ button {
   display: grid;
   gap: 12px;
 }
+
+/* horizontal checkbox layout used on transportation form */
+.checkbox-grid {
+  display: grid;
+  /* seven equal columns that shrink to fit the container */
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+.checkbox-grid label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* reusable pill/button group allowing multiple selections */
+.multi-control {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.multi-control button {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font: inherit;
+  color: #374151;
+}
+.multi-control button.selected {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+/* generic fieldset styling used for days and type sections */
+fieldset {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 0; /* prevent extra vertical space */
+}
+fieldset legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
 
 .form-grid label,
 .filter-grid label {

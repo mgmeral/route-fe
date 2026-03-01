@@ -89,42 +89,44 @@ export const RoutesPage = () => {
     <div className="routes-page">
       <div className="card">
         <h2>Route Search</h2>
-        <form className="filter-grid" onSubmit={onSearch}>
-          <label>
-            Origin
-            <select value={originId} onChange={(event) => setOriginId(event.target.value)}>
-              <option value="">Select origin</option>
-              {locations.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.name}
-                </option>
-              ))}
-            </select>
-            {errors.originId ? <span className="error-text">{errors.originId}</span> : null}
-          </label>
+        <form className="route-search-form" onSubmit={onSearch}>
+          <div className="route-form-row">
+            <label>
+              Origin
+              <select value={originId} onChange={(event) => setOriginId(event.target.value)}>
+                <option value="">Select origin</option>
+                {locations.map((location) => (
+                  <option key={location.id} value={location.code}>
+                    {location.name}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label>
-            Destination
-            <select value={destinationId} onChange={(event) => setDestinationId(event.target.value)}>
-              <option value="">Select destination</option>
-              {locations.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.name}
-                </option>
-              ))}
-            </select>
-            {errors.destinationId ? <span className="error-text">{errors.destinationId}</span> : null}
-          </label>
+            <label>
+              Destination
+              <select value={destinationId} onChange={(event) => setDestinationId(event.target.value)}>
+                <option value="">Select destination</option>
+                {locations.map((location) => (
+                  <option key={location.id} value={location.code}>
+                    {location.name}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label>
-            Trip Date
-            <input type="date" value={tripDate} onChange={(event) => setTripDate(event.target.value)} />
-            {errors.tripDate ? <span className="error-text">{errors.tripDate}</span> : null}
-          </label>
+            <label>
+              Trip Date
+              <input type="date" value={tripDate} onChange={(event) => setTripDate(event.target.value)} />
+            </label>
 
-          <button type="submit" className="btn" disabled={isSearchDisabled}>
-            {loadingRoutes ? 'Searching...' : 'Search'}
-          </button>
+            <button type="submit" className="btn" disabled={isSearchDisabled}>
+              {loadingRoutes ? 'Searching...' : 'Search'}
+            </button>
+          </div>
+          {errors.originId ? <p className="error-text">{errors.originId}</p> : null}
+          {errors.destinationId ? <p className="error-text">{errors.destinationId}</p> : null}
+          {errors.tripDate ? <p className="error-text">{errors.tripDate}</p> : null}
         </form>
         {loadingLocations ? <p>Loading locations...</p> : null}
         {errorMessage ? <p className="error-text">{errorMessage}</p> : null}

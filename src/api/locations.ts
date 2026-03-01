@@ -1,14 +1,10 @@
 import type { Location, LocationCreateRequest } from '../types';
-import { apiFetch, isNetworkError } from './fetcher';
-import { mockLocations } from './mockStore';
+import { apiFetch} from './fetcher';
 
 export const getLocations = async (): Promise<Location[]> => {
   try {
     return await apiFetch<Location[]>('/api/locations');
   } catch (error) {
-    if (isNetworkError(error)) {
-      return mockLocations;
-    }
     throw error;
   }
 };

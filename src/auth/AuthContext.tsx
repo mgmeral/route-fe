@@ -1,6 +1,6 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ApiError, clearAuthCredential, parseJson, setAuthToken, setBasicCredential } from '../api/fetcher';
+import { ApiError, clearAuthCredential, parseJson, setAuthToken, setBasicCredential, apiFetch } from '../api/fetcher';
 import type { Role, User } from '../types';
 
 type AuthContextValue = {
@@ -10,19 +10,50 @@ type AuthContextValue = {
   setRole: (role: Role) => void;
 };
 
+// The backend currently returns role names in a format such as
+// "ROLE_ADMIN" or "ROLE_USER".  Our front-end logic and `Role` type expect
+// just the short form (`ADMIN`/`USER`), so we normalize here.  Future backends
+// should ideally send the canonical form, but this helper keeps us robust.
+const normalizeRole = (raw?: string): Role | null => {
+  if (!raw) return null;
+  const upper = raw.replace(/^ROLE_/, '').toUpperCase();
+  if (upper === 'ADMIN') return 'ADMIN';
+  if (upper === 'USER') return 'USER';
+  return null;
+};
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 interface LoginResponse {
   username?: string;
-  role?: Role;
+  roles?: string[];
   token?: string;
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
+  // When the provider is mounted we attempt to restore the user from the
+  // backend session.  The server should honour the existing cookie and
+  // return either the authenticated user or a 401; either way we end up with a
+  // consistent `currentUser` value for the rest of the app.
+  useEffect(() => {
+    (async () => {
+      try {
+        const u = await apiFetch<User>('/api/auth/me');
+        // the server might also send the unnormalized role, so patch it here
+        setCurrentUser({
+          username: u.username,
+          role: normalizeRole(u.role as string) ?? u.role as Role
+        });
+      } catch {
+        // not logged in or endpoint unavailable – nothing to do
+      }
+    })();
+  }, []);
+
   const login = async (username: string, password: string) => {
-    const response = await fetch('/api/login', {
+    const response = await fetch('/api/auth/login', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -41,10 +72,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const data = (await parseJson(response)) as LoginResponse | null;
-    const backendRole = data?.role;
+    // map whatever the server gave us into our `Role` union
+    const firstRole = data?.roles?.[0];
+    const backendRole = normalizeRole(firstRole);
 
     if (!backendRole) {
-      throw new ApiError('Login response does not include role.', 500, data);
+      throw new ApiError(
+        'Login response does not include a recognized role.',
+        500,
+        data
+      );
     }
 
     if (data?.token) {
@@ -53,6 +90,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const encodedBasic = btoa(`${username}:${password}`);
       setBasicCredential(encodedBasic);
     }
+
+    // ensure that immediately after login we have a currentUser value; the
+    // response may not contain the `username`/`role` fields in some auth
+    // designs, so we call setCurrentUser explicitly rather than relying on the
+    // effect above to run on the next render.
+    setCurrentUser({
+      username: data?.username?.trim() ? data.username : username,
+      role: backendRole
+    });
 
     setCurrentUser({
       username: data?.username?.trim() ? data.username : username,
