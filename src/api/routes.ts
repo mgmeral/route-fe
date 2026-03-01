@@ -2,7 +2,16 @@ import type { NormalizedSegment, RouteResponse, RouteSegmentResponse } from '../
 import { apiFetch } from './fetcher';
 
 const transportKeys = ['transportationName', 'transportation', 'mode', 'type', 'name'] as const;
-const locationKeys = ['to', 'destination', 'end', 'location', 'locationName', 'toName'] as const;
+const locationKeys = [
+  'destinationName',
+  'toName',
+  'locationName',
+  'to',
+  'destination',
+  'end',
+  'location',
+  'destinationCode'
+] as const;
 
 const extractLabel = (segment: RouteSegmentResponse, keys: readonly string[]) => {
   for (const key of keys) {
@@ -10,8 +19,16 @@ const extractLabel = (segment: RouteSegmentResponse, keys: readonly string[]) =>
     if (typeof value === 'string' && value.trim()) {
       return value;
     }
+    if (value && typeof value === 'object') {
+      const candidate = ['name', 'code', 'locationName']
+        .map((nestedKey) => (value as Record<string, unknown>)[nestedKey])
+        .find((nestedValue) => typeof nestedValue === 'string' && nestedValue.trim());
+      if (typeof candidate === 'string') {
+        return candidate;
+      }
+    }
   }
-  return JSON.stringify(segment);
+  return 'Unknown';
 };
 
 export const normalizeSegment = (segment: RouteSegmentResponse): NormalizedSegment => ({

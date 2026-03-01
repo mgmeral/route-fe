@@ -159,7 +159,6 @@ export const LocationsPage = () => {
       <table className="table">
         <thead>
           <tr>
-            <th>Code</th>
             <th>Name</th>
             <th>Country</th>
             <th>City</th>
@@ -169,8 +168,7 @@ export const LocationsPage = () => {
         <tbody>
           {items.map((location) => (
             <tr key={location.id}>
-              <td>{location.code}</td>
-              <td>{location.name}</td>
+              <td>{location.code.trim().length === 3 ? `${location.name} (${location.code.trim().toUpperCase()})` : location.name}</td>
               <td>{location.country}</td>
               <td>{location.city}</td>
               <td>

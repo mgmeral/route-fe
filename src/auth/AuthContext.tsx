@@ -19,6 +19,7 @@ const normalizeRole = (raw?: string): Role | null => {
   const upper = raw.replace(/^ROLE_/, '').toUpperCase();
   if (upper === 'ADMIN') return 'ADMIN';
   if (upper === 'USER') return 'USER';
+  if (upper === 'AGENCY') return 'AGENCY';
   return null;
 };
 

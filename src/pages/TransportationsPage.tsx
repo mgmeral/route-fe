@@ -47,6 +47,34 @@ const getError = (error: unknown) => {
   return 'Operation failed.';
 };
 
+const isAirportCode = (code: string) => /^[A-Za-z]{3}$/.test(code.trim());
+
+const formatNameCode = (name: string, code: string) => {
+  const cleanName = name.trim();
+  const cleanCode = code.trim().toUpperCase();
+  if (!cleanName || cleanName.toUpperCase() === cleanCode) {
+    return cleanCode;
+  }
+  return isAirportCode(cleanCode) ? `${cleanName} (${cleanCode})` : cleanName;
+};
+
+const formatLocationValue = (value: unknown) => {
+  if (value && typeof value === 'object') {
+    const code = String((value as Record<string, unknown>).code ?? '').trim();
+    const name = String((value as Record<string, unknown>).name ?? '').trim();
+    if (code) {
+      return formatNameCode(name || code, code);
+    }
+    return name || '';
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    return value.trim().toUpperCase();
+  }
+
+  return '';
+};
+
 export const TransportationsPage = () => {
   const [items, setItems] = useState<Transportation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,8 +196,8 @@ export const TransportationsPage = () => {
         <tbody>
           {items.map((item) => (
             <tr key={item.id}>
-              <td>{typeof item.origin === 'object' ? item.origin?.code : String(item.origin ?? '')}</td>
-              <td>{typeof item.destination === 'object' ? item.destination?.code : String(item.destination ?? '')}</td>
+              <td>{formatLocationValue(item.origin)}</td>
+              <td>{formatLocationValue(item.destination)}</td>
               <td>{String(item.type ?? '')}</td>
               <td>{formatDays(Number((item as any).operatingDaysMask ?? 0))}</td>
               <td>
@@ -199,7 +227,7 @@ export const TransportationsPage = () => {
               <option value="">Select origin</option>
               {locations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
-                  {loc.name} ({loc.city}, {loc.country})
+                  {formatNameCode(loc.name, loc.code)} ({loc.city}, {loc.country})
                 </option>
               ))}
             </select>
@@ -210,7 +238,7 @@ export const TransportationsPage = () => {
               <option value="">Select destination</option>
               {locations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
-                  {loc.name} ({loc.city}, {loc.country})
+                  {formatNameCode(loc.name, loc.code)} ({loc.city}, {loc.country})
                 </option>
               ))}
             </select>

@@ -84,13 +84,32 @@ button {
   left: 0;
   right: 0;
   height: 56px;
-  background: #fff;
-  border-bottom: 1px solid #e5e7eb;
+  background: #1c2340;
+  border-bottom: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
   z-index: 20;
+  color: #fff;
+}
+
+.header strong {
+  font-size: 1.05rem;
+  letter-spacing: 1px;
+}
+
+.header .btn {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+}
+
+.header .btn:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+.header-logo {
+  flex-shrink: 0;
 }
 
 .header-left,
@@ -98,6 +117,53 @@ button {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.header-right {
+  position: relative;
+}
+
+.user-menu-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.user-menu-btn:hover {
+  background: rgba(255,255,255,0.12);
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  min-width: 140px;
+  z-index: 25;
+  overflow: hidden;
+}
+
+.user-dropdown button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 10px 14px;
+  font: inherit;
+  color: #111827;
+  cursor: pointer;
+}
+
+.user-dropdown button:hover {
+  background: #f3f4f6;
 }
 
 .hamburger {
@@ -189,19 +255,7 @@ button {
 
 .modal-header {
   display: flex;
-  justify-content: space-between;  .checkbox-grid {
-    display: grid;
-    /* seven equal columns that shrink to fit the container */
-    grid-template-columns: repeat(7, 1fr);
-    gap: 8px;
-    align-items: center;
-  }
-  .checkbox-grid label {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    white-space: nowrap;
-  }
+  justify-content: space-between;
   align-items: center;
 }
 
@@ -283,6 +337,34 @@ fieldset legend {
   gap: 12px;
 }
 
+.route-search-form {
+  display: grid;
+  gap: 8px;
+}
+
+.route-form-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.route-form-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #374151;
+}
+
+.route-form-row select,
+.route-form-row input {
+  min-width: 140px;
+}
+
+.route-form-row .btn {
+  margin-left: auto;
+}
+
 .routes-list {
   display: grid;
   gap: 8px;
@@ -290,18 +372,27 @@ fieldset legend {
 
 .route-row {
   border: 1px solid #d1d5db;
-  padding: 10px;
+  padding: 8px 10px;
   border-radius: 8px;
   text-align: left;
   display: grid;
-  gap: 4px;
+  gap: 2px;
   background: #fff;
   cursor: pointer;
 }
 
+.route-row strong {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.route-row span {
+  color: #374151;
+}
+
 .route-row.selected {
   border-color: #2563eb;
-  background: #eff6ff;
+  background: #eef2ff;
 }
 
 .timeline-panel.hidden {
@@ -317,7 +408,7 @@ fieldset legend {
 
 .timeline-item {
   position: relative;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .timeline-item .dot {
@@ -332,6 +423,26 @@ fieldset legend {
 
 .timeline-item.emphasis {
   font-weight: 700;
+}
+
+.timeline-item.location {
+  font-weight: 700;
+}
+
+.timeline-group {
+  margin-bottom: 12px;
+}
+
+.timeline-transport {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin: -4px 0 8px 14px;
+}
+
+.transport-icon {
+  font-style: normal;
+  filter: grayscale(1) brightness(0.5) sepia(1) hue-rotate(-30deg) saturate(6);
+  opacity: 0.85;
 }
 
 .panel-actions {

@@ -1,9 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ApiError } from '../api/fetcher';
 import { getLocations } from '../api/locations';
 import { normalizeSegment, searchRoutes } from '../api/routes';
-import type { Location, RouteResponse } from '../types';
-import { useEffect } from 'react';
+import type { Location, RouteResponse, RouteSegmentResponse } from '../types';
 
 interface ValidationErrors {
   originId?: string;
@@ -11,11 +10,139 @@ interface ValidationErrors {
   tripDate?: string;
 }
 
+const getTodayDate = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const isAirportCode = (code: string) => /^[A-Za-z]{3}$/.test(code.trim());
+
+const formatNameCode = (name: string, code: string) => {
+  const cleanName = name.trim();
+  const cleanCode = code.trim().toUpperCase();
+  if (!cleanName || cleanName.toUpperCase() === cleanCode) {
+    return cleanCode;
+  }
+  return isAirportCode(cleanCode) ? `${cleanName} (${cleanCode})` : cleanName;
+};
+
+const getSegmentOriginData = (segment: RouteSegmentResponse) => {
+  let code = '';
+  let name = '';
+
+  const codeKeys = ['originCode', 'fromCode'] as const;
+  const nameKeys = ['originName', 'fromName'] as const;
+
+  for (const key of codeKeys) {
+    const value = segment[key];
+    if (typeof value === 'string' && value.trim()) {
+      code = value.trim().toUpperCase();
+      break;
+    }
+  }
+
+  for (const key of nameKeys) {
+    const value = segment[key];
+    if (typeof value === 'string' && value.trim()) {
+      name = value.trim();
+      break;
+    }
+  }
+
+  const node = segment.origin ?? segment.from;
+  if (node && typeof node === 'object') {
+    const nestedCode = (node as Record<string, unknown>).code;
+    const nestedName = (node as Record<string, unknown>).name;
+    if (!code && typeof nestedCode === 'string' && nestedCode.trim()) {
+      code = nestedCode.trim().toUpperCase();
+    }
+    if (!name && typeof nestedName === 'string' && nestedName.trim()) {
+      name = nestedName.trim();
+    }
+  } else if (typeof node === 'string' && node.trim()) {
+    const raw = node.trim();
+    if (!code && raw.length === 3) {
+      code = raw.toUpperCase();
+    } else if (!name) {
+      name = raw;
+    }
+  }
+
+  return { code, name };
+};
+
+const getSegmentDestinationData = (segment: RouteSegmentResponse) => {
+  let code = '';
+  let name = '';
+
+  const codeKeys = ['destinationCode', 'toCode'] as const;
+  const nameKeys = ['destinationName', 'toName'] as const;
+
+  for (const key of codeKeys) {
+    const value = segment[key];
+    if (typeof value === 'string' && value.trim()) {
+      code = value.trim().toUpperCase();
+      break;
+    }
+  }
+
+  for (const key of nameKeys) {
+    const value = segment[key];
+    if (typeof value === 'string' && value.trim()) {
+      name = value.trim();
+      break;
+    }
+  }
+
+  const node = segment.destination ?? segment.to;
+  if (node && typeof node === 'object') {
+    const nestedCode = (node as Record<string, unknown>).code;
+    const nestedName = (node as Record<string, unknown>).name;
+    if (!code && typeof nestedCode === 'string' && nestedCode.trim()) {
+      code = nestedCode.trim().toUpperCase();
+    }
+    if (!name && typeof nestedName === 'string' && nestedName.trim()) {
+      name = nestedName.trim();
+    }
+  } else if (typeof node === 'string' && node.trim()) {
+    const raw = node.trim();
+    if (!code && raw.length === 3) {
+      code = raw.toUpperCase();
+    } else if (!name) {
+      name = raw;
+    }
+  }
+
+  return { code, name };
+};
+
+const TRANSPORT_ICONS: Record<string, string> = {
+  FLIGHT: '✈',
+  BUS: '🚌',
+  SUBWAY: '🚇',
+  METRO: '🚇',
+  TRAIN: '🚇',
+  UBER: '🚗',
+  TAXI: '🚗',
+  CAR: '🚗',
+};
+
+const getTransportIcon = (type: string) => {
+  const upper = type.toUpperCase();
+  for (const [key, icon] of Object.entries(TRANSPORT_ICONS)) {
+    if (upper.includes(key)) return icon;
+  }
+  return '🚏';
+};
+
 export const RoutesPage = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [originId, setOriginId] = useState('');
   const [destinationId, setDestinationId] = useState('');
-  const [tripDate, setTripDate] = useState('');
+  const [tripDate, setTripDate] = useState(getTodayDate);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [loadingLocations, setLoadingLocations] = useState(true);
   const [loadingRoutes, setLoadingRoutes] = useState(false);
@@ -71,7 +198,8 @@ export const RoutesPage = () => {
       setErrorMessage('');
       const data = await searchRoutes({ originId, destinationId, tripDate });
       setRoutes(data);
-      setSelectedIndex(null);
+      setSelectedIndex(data.length > 0 ? 0 : null);
+      setPanelOpen(data.length > 0);
     } catch (error) {
       if (error instanceof ApiError) {
         setErrorMessage(error.message);
@@ -84,11 +212,29 @@ export const RoutesPage = () => {
   };
 
   const selectedRoute = selectedIndex !== null ? routes[selectedIndex] : null;
+  const locationNameByCode = useMemo(
+    () =>
+      new Map(
+        locations
+          .filter((location) => location.code && location.name)
+          .map((location) => [location.code.toUpperCase(), location.name])
+      ),
+    [locations]
+  );
+  const getLocationName = (value: string) => locationNameByCode.get(value.toUpperCase()) ?? value;
+  const formatLocationValue = (value: string) => {
+    const code = value.trim().toUpperCase();
+    const name = getLocationName(value);
+    if (name !== value || isAirportCode(code)) {
+      return formatNameCode(name, code);
+    }
+    return value;
+  };
 
   return (
     <div className="routes-page">
       <div className="card">
-        <h2>Route Search</h2>
+        <h2>Routes Search</h2>
         <form className="route-search-form" onSubmit={onSearch}>
           <div className="route-form-row">
             <label>
@@ -97,7 +243,7 @@ export const RoutesPage = () => {
                 <option value="">Select origin</option>
                 {locations.map((location) => (
                   <option key={location.id} value={location.code}>
-                    {location.name}
+                    {formatNameCode(location.name, location.code)}
                   </option>
                 ))}
               </select>
@@ -109,7 +255,7 @@ export const RoutesPage = () => {
                 <option value="">Select destination</option>
                 {locations.map((location) => (
                   <option key={location.id} value={location.code}>
-                    {location.name}
+                    {formatNameCode(location.name, location.code)}
                   </option>
                 ))}
               </select>
@@ -117,7 +263,7 @@ export const RoutesPage = () => {
 
             <label>
               Trip Date
-              <input type="date" value={tripDate} onChange={(event) => setTripDate(event.target.value)} />
+              <input type="date" lang="en-GB" value={tripDate} onChange={(event) => setTripDate(event.target.value)} />
             </label>
 
             <button type="submit" className="btn" disabled={isSearchDisabled}>
@@ -138,12 +284,23 @@ export const RoutesPage = () => {
           {routes.length === 0 ? <p>No routes found.</p> : null}
           <div className="routes-list">
             {routes.map((route, index) => {
-              const normalized = route.segments.map(normalizeSegment);
-              const stops = normalized
-                .slice(0, -1)
-                .map((segment) => segment.locationLabel)
-                .filter(Boolean);
-              const routeLabel = stops.length ? `Via ${stops.join(', ')}` : 'Direct';
+              // Find the flight segment's origin for the "Via" label
+              const flightSegment = route.segments.find(
+                (seg) => normalizeSegment(seg).transportLabel.toUpperCase().includes('FLIGHT')
+              );
+              let viaLabel = formatLocationValue(route.from);
+              
+              if (flightSegment) {
+                const { code, name } = getSegmentOriginData(flightSegment);
+                const resolvedName = name || (code ? getLocationName(code) : '');
+                if (code && code.length === 3 && resolvedName) {
+                  viaLabel = formatNameCode(resolvedName, code);
+                } else if (resolvedName) {
+                  viaLabel = resolvedName;
+                } else if (code) {
+                  viaLabel = code.toUpperCase();
+                }
+              }
 
               return (
                 <button
@@ -155,8 +312,7 @@ export const RoutesPage = () => {
                     setPanelOpen(true);
                   }}
                 >
-                  <strong>{route.from}</strong> → <strong>{route.to}</strong>
-                  <span>{routeLabel}</span>
+                  <strong>Via {viaLabel}</strong>
                 </button>
               );
             })}
@@ -169,29 +325,34 @@ export const RoutesPage = () => {
             <p>Select a route to see details</p>
           ) : (
             <div className="timeline">
-              <div className="timeline-item emphasis">
+              <div className="timeline-item location emphasis">
                 <span className="dot" />
-                <div>{selectedRoute.from}</div>
+                <div>{formatLocationValue(selectedRoute.from)}</div>
               </div>
               {selectedRoute.segments.map((segment, idx) => {
                 const normalized = normalizeSegment(segment);
+                const { code, name } = getSegmentDestinationData(segment);
+                const resolvedName = name || (code ? getLocationName(code) : '');
+                let displayLocation = '';
+                
+                if (code && code.length === 3 && resolvedName) {
+                  displayLocation = formatNameCode(resolvedName, code);
+                } else if (resolvedName) {
+                  displayLocation = resolvedName;
+                } else {
+                  displayLocation = normalized.locationLabel;
+                }
+
                 return (
-                  <div key={idx}>
-                    <div className="timeline-item">
+                  <div key={idx} className="timeline-group">
+                    <div className="timeline-transport"><span className="transport-icon">{getTransportIcon(normalized.transportLabel)}</span> {normalized.transportLabel}</div>
+                    <div className="timeline-item location">
                       <span className="dot" />
-                      <div>{normalized.transportLabel}</div>
-                    </div>
-                    <div className="timeline-item">
-                      <span className="dot" />
-                      <div>{normalized.locationLabel}</div>
+                      <div>{displayLocation}</div>
                     </div>
                   </div>
                 );
               })}
-              <div className="timeline-item emphasis">
-                <span className="dot" />
-                <div>{selectedRoute.to}</div>
-              </div>
             </div>
           )}
           <div className="panel-actions">
